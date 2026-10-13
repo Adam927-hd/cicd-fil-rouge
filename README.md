@@ -72,4 +72,4 @@ docker run --rm -p 8000:8000 taskflow
 
 Push direct sur `main` refusé par le ruleset :
 
-![Push direct refusé](docs/images/push-refuse.png)
+![Push direct refusé](docs/images/screen1.png)
