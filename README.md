@@ -101,3 +101,22 @@ approuver du code qui casse une fonctionnalité sans s'en rendre compte. Les che
 obligatoires garantissent automatiquement que **`main` reste toujours fonctionnel et
 livrable** : aucun code ne peut y entrer sans avoir passé le lint et les tests. La PR a
 ensuite été fermée sans être mergée.
+
+## Pipeline CI : PR verte mais bloquée
+
+Sur la branche `feat/ci-rapide`, le workflow a été accéléré et enrichi : cache pip, matrice
+Python **3.11 / 3.12 / 3.13**, rapport de tests publié en artefact et `concurrency` pour annuler
+les runs obsolètes.
+
+En ouvrant la PR, **tous les jobs sont verts**, et pourtant le merge reste **bloqué**.
+
+**Pourquoi ?** Avec la matrice, le job `test` n'existe plus sous ce nom : GitHub crée trois jobs
+nommés `test (3.11)`, `test (3.12)` et `test (3.13)`. Or le ruleset de `main` exige toujours un
+check nommé exactement **`test`**. Ce check n'est plus jamais publié, donc GitHub l'affiche en
+_Expected — Waiting for status to be reported_ et attend indéfiniment.
+
+![PR verte mais bloquée par le check test attendu](docs/images/screen5.png)
+
+**Leçon :** déclarer chaque job comme check obligatoire est fragile, car renommer un job ou
+ajouter une version à la matrice suffit à bloquer toutes les PR. D'où la correction suivante :
+un job unique `CI OK` qui agrège les résultats et devient le seul check obligatoire.
