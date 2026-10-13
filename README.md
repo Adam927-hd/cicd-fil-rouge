@@ -73,3 +73,31 @@ docker run --rm -p 8000:8000 taskflow
 Push direct sur `main` refusé par le ruleset :
 
 ![Push direct refusé](docs/images/screen1.png)
+
+## CI : merge bloqué si les tests échouent
+
+Le workflow `.github/workflows/ci.yml` lance deux jobs **en parallèle** à chaque Pull Request
+vers `main` :
+
+- **`lint`** : `ruff check .` vérifie le style et détecte les erreurs courantes (imports
+  inutilisés, variables non définies…)
+- **`test`** : `pytest` exécute la suite de tests de l'API
+
+Ces deux checks sont déclarés **obligatoires** dans le ruleset de `main`
+(_Require status checks to pass_). Tant qu'ils ne sont pas verts, le bouton de merge reste
+bloqué.
+
+**Démonstration :** sur la branche `fix/casse-test`, le test `test_health_returns_ok` a été
+volontairement cassé (on attend `"ko"` au lieu de `"ok"`). Résultat :
+
+- ✅ `lint` passe : le code est syntaxiquement correct
+- ❌ `test` échoue : `AssertionError`
+- 🚫 **Merging is blocked**, même avec l'approbation du binôme
+
+![Merge bloqué par le check test](docs/images/screen4.png)
+
+**Pourquoi c'est important :** la relecture humaine ne suffit pas, car un relecteur peut
+approuver du code qui casse une fonctionnalité sans s'en rendre compte. Les checks
+obligatoires garantissent automatiquement que **`main` reste toujours fonctionnel et
+livrable** : aucun code ne peut y entrer sans avoir passé le lint et les tests. La PR a
+ensuite été fermée sans être mergée.
