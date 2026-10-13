@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
 
+# Annule le run précédent si on repousse sur la même branche
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: lint
@@ -21,14 +26,35 @@ jobs:
       - run: ruff check .
 
   test:
-    name: test
+    name: test (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: requirements-dev.txt
       - run: pip install -r requirements-dev.txt
-      - run: pytest -v
+      - run: pytest -v --junitxml=report-${{ matrix.python-version }}.xml
+      - name: Rapport de tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-tests-${{ matrix.python-version }}
+          path: report-${{ matrix.python-version }}.xml
+
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Échoue si un job a échoué ou a été annulé
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
+      - run: echo "lint et test sont verts"
